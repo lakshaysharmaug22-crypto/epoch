@@ -22,7 +22,18 @@ export function IncidentsView() {
   const inc = incidents.find((i) => i.id === incidentId) ?? incidents.at(-1);
 
   if (!d) return null;
-  if (!inc) return <Panel title="No incidents yet"><p className="text-[12.5px] text-muted">Run `epoch heal --scenario drift` (or `epoch demo`) to inject a fault into the deployed genome.</p></Panel>;
+  if (!inc) {
+    const other = d.bundle.meta.workloads.find((w) => (d.bundle.workloads[w]?.incidents.length ?? 0) > 0);
+    return (
+      <Panel eyebrow="Self-healing" title={`No incidents recorded for ${d.wb.describe.title}`}>
+        <p className="max-w-[70ch] text-[12.5px] leading-relaxed text-ink-2">
+          The recorded self-healing scenarios (input drift, resolver outage, model-server slowdown) were injected into the{" "}
+          {other ? d.bundle.workloads[other].describe.title : "triage"} deployment. The same detector → RCA → canary → twin → gate loop applies to every workload.
+        </p>
+        {other && <div className="mt-3"><Button tone="primary" onClick={() => useUI.getState().setWorkload(other)}>View {d.bundle.workloads[other].describe.title} incidents →</Button></div>}
+      </Panel>
+    );
+  }
 
   return (
     <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">

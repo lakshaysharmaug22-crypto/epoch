@@ -32,7 +32,7 @@ export function Boot() {
     ];
   }, [data]);
 
-  const skipBoot = typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || /tour/.test(window.location.hash));
+  const skipBoot = typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || /tour/.test(window.location.hash) || document.visibilityState === "hidden");
 
   useEffect(() => {
     if (booted) return;

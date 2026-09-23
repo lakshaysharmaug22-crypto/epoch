@@ -40,6 +40,7 @@ export function CommandView() {
   const head = wb.race?.headline;
   const val = wb.twin?.validation;
   const healed = incidents.filter((i) => ["resolved", "mitigated"].includes(i.status)).length;
+  const otherWithTape = d.bundle.meta.workloads.find((w) => (d.bundle.workloads[w]?.incidents.length ?? 0) > 0);
 
   const cur = tape?.data.series.find((s) => s.w === w) ?? tape?.data.series[0];
   const status = tape && cur ? nodeStatus(tape, cur.phase, cur.w) : undefined;
@@ -57,7 +58,7 @@ export function CommandView() {
           tone={head ? (head.pct_fewer_trials > 0 ? C.ok : C.critical) : undefined}
           sub={head ? `trials to NSGA-II's final HV (${head.agent_trials_to_nsga2_final} vs ${head.nsga2_trials_to_own_final})` : "run a race"} />
         <Stat label="Twin error · p95" value={val && !val.error ? fmtPct(val.mape_p95, 0) : "—"} sub={val && !val.error ? `p50 ${fmtPct(val.mape_p50, 0)} · vs real HTTP load test` : "no validation yet"} />
-        <Stat label="Incidents healed" value={`${healed}/${incidents.length}`} sub={incidents.length ? "detect → RCA → canary → gate" : "none recorded"} />
+        <Stat label="Incidents healed" value={incidents.length ? `${healed}/${incidents.length}` : "—"} sub={incidents.length ? "detect → RCA → canary → gate" : "healing scenarios recorded on triage"} />
       </div>
 
       <Panel tour="command-topology" eyebrow="Deployed pipeline · live topology · packets = requests, width = traffic share" title={`${wb.describe.title}${tape ? ` · replaying ${tape.id}` : ""}`}
@@ -83,7 +84,9 @@ export function CommandView() {
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px]">
-        <Panel eyebrow="Production · quality · solid = live, dashed = old config (counterfactual)" title={tape ? `${quality.label} per minute` : "No production telemetry"}>
+        {tape ? (
+          <>
+        <Panel eyebrow="Production · quality · solid = live, dashed = old config (counterfactual)" title={`${quality.label} per minute`}>
           {tape ? <WindowChart data={series.map((s) => ({ w: s.w, live: num(s.live[quality.name]), cf: s.counterfactual ? num(s.counterfactual[quality.name]) : null }))}
             metric={quality.name} label={quality.label} format={(v) => fmtNum(v, 3)} faultFrom={tape.data.scenario.fault_at <= w ? tape.data.scenario.fault_at : undefined}
             alarm={tape.data.alarm_w !== undefined && tape.data.alarm_w <= w ? tape.data.alarm_w : undefined} xMax={maxW}
@@ -95,6 +98,19 @@ export function CommandView() {
             alarm={tape.data.alarm_w !== undefined && tape.data.alarm_w <= w ? tape.data.alarm_w : undefined} xMax={maxW}
             promoted={tape.data.promoted_w !== undefined && tape.data.promoted_w <= w ? tape.data.promoted_w : undefined} betterUp={false} height={190} />}
         </Panel>
+          </>
+        ) : (
+          <Panel eyebrow="Production replay" title="Self-healing incidents were recorded on the triage deployment" className="xl:col-span-2">
+            <p className="max-w-[70ch] text-[12.5px] leading-relaxed text-ink-2">
+              Drift, resolver-outage and model-server-slowdown faults were injected into the triage cascade and handled end to end:
+              CUSUM detection, RCA, 3× shadow canaries, a twin capacity check and a human approval gate.
+            </p>
+            {otherWithTape && (
+              <div className="mt-3"><Button tone="primary" onClick={() => { const s = useUI.getState(); s.setWorkload(otherWithTape); s.setView("incidents"); }}>
+                Open triage incidents →</Button></div>
+            )}
+          </Panel>
+        )}
         <Panel eyebrow="Recommended configuration · knee of the frontier" title={knee ? `Trial ${knee.number} · ${S_LABEL[knee.strategy]} · seed ${knee.seed}` : "—"}>
           {knee && (
             <div className="flex flex-col gap-3">

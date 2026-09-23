@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Boxes, Command as CmdIcon, Cpu, PlayCircle } from "lucide-react";
 import { useEffect, useRef, type ComponentType } from "react";
 import { Boot } from "@/components/Boot";
@@ -136,11 +136,9 @@ export function Shell() {
             </div>
           )}
           {data && (
-            <AnimatePresence mode="wait">
-              <motion.div key={view + workload} className="stagger" initial={{ opacity: 0, y: 8, filter: "blur(3px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.22, ease: [0.2, 0.7, 0.2, 1] }}>
-                <View />
-              </motion.div>
-            </AnimatePresence>
+            <div key={view + workload} className="stagger view-in">
+              <View />
+            </div>
           )}
         </main>
         {data && <StatusBar />}

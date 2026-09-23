@@ -17,7 +17,7 @@ export function Panel({ title, eyebrow, right, children, className, pad = true, 
             {eyebrow && <div className="eyebrow mb-1">{eyebrow}</div>}
             {title && <h2 className="text-[13.5px] font-medium tracking-[-0.005em] text-ink [text-wrap:balance]">{title}</h2>}
           </div>
-          {right && <div className="flex shrink-0 flex-wrap items-center gap-2">{right}</div>}
+          {right && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{right}</div>}
         </header>
       )}
       <div className={cn("min-w-0 flex-1", pad && "p-4")}>{children}</div>
@@ -50,7 +50,7 @@ export function Segmented<T extends string>({ value, options, onChange, size = "
   value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void; size?: "sm" | "xs";
 }) {
   return (
-    <div role="tablist" className="inline-flex rounded-md border border-line bg-sunken p-0.5">
+    <div role="tablist" className="inline-flex max-w-full flex-wrap rounded-md border border-line bg-sunken p-0.5">
       {options.map((o) => (
         <button key={o.value} role="tab" aria-selected={o.value === value} onClick={() => onChange(o.value)}
           className={cn("rounded-[5px] font-medium transition-colors", size === "sm" ? "px-2.5 py-1 text-[12px]" : "px-2 py-0.5 text-[11px]",
