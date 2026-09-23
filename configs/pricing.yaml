@@ -1,0 +1,18 @@
+# Cost model inputs. cost_per_1k = 1000 * (compute_seconds_per_request * hardware_$/h / 3600 + llm_$/request)
+# Verify LLM prices at https://www.anthropic.com/pricing before quoting numbers — these are editable assumptions.
+
+hardware_per_hour:
+  cpu: 0.05        # ~2 vCPU on-demand
+  cuda: 0.45       # single mid-range GPU on-demand (RTX 4090 / L4 class)
+
+llm_per_million_tokens:
+  claude-haiku-4-5-20251001:
+    input: 1.00
+    output: 5.00
+    cache_write: 1.25
+    cache_read: 0.10
+  claude-sonnet-5:
+    input: 3.00
+    output: 15.00
+    cache_write: 3.75
+    cache_read: 0.30

@@ -1,0 +1,79 @@
+# EPOCH — full local stack.  `docker compose up --build`  → dashboard http://localhost:3000 · API :8000 · MLflow :5000
+# GPU worker needs the NVIDIA Container Toolkit. CPU-only machines: `docker compose --profile cpu up` (uses worker-cpu).
+
+x-backend-env: &backend-env
+  EPOCH_DB_URL: postgresql+psycopg://epoch:epoch@postgres:5432/epoch
+  EPOCH_REDIS_URL: redis://redis:6379/0
+  EPOCH_MLFLOW_URI: http://mlflow:5000
+  EPOCH_HOME: /data
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  HF_HOME: /data/hf
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: epoch
+      POSTGRES_PASSWORD: epoch
+      POSTGRES_DB: epoch
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U epoch"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.16.2
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts
+    volumes: [mlflow:/mlflow]
+    ports: ["5000:5000"]
+
+  api:
+    build: { context: ., dockerfile: infra/Dockerfile, args: { EXTRAS: "infra" } }
+    command: uvicorn epoch.api.main:app --host 0.0.0.0 --port 8000
+    environment: *backend-env
+    volumes: [epochdata:/data]
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build: { context: ., dockerfile: infra/Dockerfile.gpu }
+    command: celery -A epoch.worker.celery worker --loglevel=info --concurrency=1
+    environment: *backend-env
+    volumes: [epochdata:/data]
+    depends_on: [api]
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]
+
+  worker-cpu:
+    profiles: [cpu]
+    build: { context: ., dockerfile: infra/Dockerfile, args: { EXTRAS: "infra" } }
+    command: celery -A epoch.worker.celery worker --loglevel=info --concurrency=1
+    environment: *backend-env
+    volumes: [epochdata:/data]
+    depends_on: [api]
+
+  web:
+    build: { context: ./web, args: { NEXT_PUBLIC_EPOCH_API: "http://localhost:8000" } }
+    ports: ["3000:80"]
+    depends_on: [api]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes: ["./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+
+volumes:
+  pgdata: {}
+  mlflow: {}
+  epochdata: {}
